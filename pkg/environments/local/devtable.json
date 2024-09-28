@@ -9,6 +9,10 @@
     {
       "AttributeName": "sk",
       "AttributeType": "S"
+    },
+    {
+      "AttributeName": "isActive",
+      "AttributeType": "B"
     }
   ],
   "KeySchema": [
