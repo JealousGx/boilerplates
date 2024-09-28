@@ -1,15 +1,15 @@
-functions := $(shell cd src && find . -name \*main.go)
+functions := $(shell cd pkg && find . -name \*main.go)
 
 build: clean
 	@mkdir -p ../out
 	@for f in $(functions) ; do \
 			dirname=$$(dirname $$f); \
 			file=$$(basename $$f .go); \
-      cd src && env GOARCH=amd64 GOOS=linux go build -ldflags="-s -w" -o ../out/$$dirname/$$file $$f; \
+      cd pkg && env GOARCH=amd64 GOOS=linux go build -ldflags="-s -w" -o ../out/$$dirname/$$file $$f; \
     done
 
 clean:
-	@cd src && go clean
+	@cd pkg && go clean
 	@rm -rf ./out
 
 zip:
@@ -18,4 +18,4 @@ zip:
     done
 
 format:
-	@cd src && gofmt -s -w .
+	@cd pkg && gofmt -s -w .

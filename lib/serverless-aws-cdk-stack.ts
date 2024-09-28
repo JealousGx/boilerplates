@@ -7,12 +7,6 @@ export class ServerlessAwsCdkStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
     super(scope, id, props);
 
-    const myFunc = new lambda.Function(this, "MyCDKLambda", {
-      code: lambda.Code.fromAsset("out/lambdas/hello"),
-      handler: "main",
-      runtime: lambda.Runtime.PROVIDED_AL2023,
-    });
-
     const gateway = new RestApi(this, "myGateway", {
       defaultCorsPreflightOptions: {
         allowOrigins: ["*"],
@@ -20,8 +14,16 @@ export class ServerlessAwsCdkStack extends cdk.Stack {
       },
     });
 
+    const baseResource = gateway.root.addResource("api/v1");
+
+    const myFunc = new lambda.Function(this, "MyCDKLambda", {
+      code: lambda.Code.fromAsset("out/lambdas/hello"),
+      handler: "main",
+      runtime: lambda.Runtime.PROVIDED_AL2023,
+    });
+
     const integration = new LambdaIntegration(myFunc);
-    const testResource = gateway.root.addResource("test");
-    testResource.addMethod("GET", integration);
+    const proxyResource = baseResource.addResource("test/{proxy+}");
+    proxyResource.addMethod("ANY", integration);
   }
 }

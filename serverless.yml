@@ -27,8 +27,8 @@ provider:
 
 functions:
   hello:
-    handler: src/lambdas/hello/main.go
+    handler: pkg/lambdas/hello/main.go
     events:
       - http:
-          path: graphql
+          path: "api/v1/test/{proxy+}"
           method: any
