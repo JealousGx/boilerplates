@@ -12,7 +12,7 @@
     },
     {
       "AttributeName": "isActive",
-      "AttributeType": "B"
+      "AttributeType": "N"
     }
   ],
   "KeySchema": [

@@ -4,7 +4,9 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"net/http"
 	"os"
+	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/credentials"
@@ -25,46 +27,51 @@ func NewDB() *DB {
 		log.Fatal("Error loading .env file")
 	}
 
-	var sess *session.Session
-	var err error
+	var config *aws.Config
+
+	httpClient := &http.Client{
+		Timeout: time.Second * 5, // Maximum of 5 secs
+	}
+
+	creds := credentials.NewStaticCredentials(
+		os.Getenv("AWS_ACCESS_KEY_ID"),
+		os.Getenv("AWS_SECRET_ACCESS_KEY"),
+		os.Getenv("AWS_SESSION_TOKEN"),
+	)
 
 	environment := os.Getenv("ENVIRONMENT")
 	if environment == "local-db" {
-		sess, err = session.NewSession(&aws.Config{
-			Region:   aws.String("us-east-1"),
-			Endpoint: aws.String("http://127.0.0.1:8000"),
-		})
+		config = &aws.Config{
+			Region:      aws.String("us-east-1"),
+			Endpoint:    aws.String("http://host.docker.internal:8000"),
+			Credentials: creds,
+			HTTPClient:  httpClient,
+			MaxRetries:  aws.Int(1),
+			// LogLevel:   aws.LogLevel(aws.LogDebug), // Uncomment for debugging
+		}
+
 	} else {
-		sess, err = session.NewSession(&aws.Config{
-			Region: aws.String("us-east-1"),
-			Credentials: credentials.NewStaticCredentials(
-				os.Getenv("AWS_ACCESS_KEY_ID"),
-				os.Getenv("AWS_SECRET_ACCESS_KEY"),
-				"",
-			),
-		})
+		config = &aws.Config{
+			Region:      aws.String("us-east-1"),
+			Credentials: creds,
+			HTTPClient:  httpClient,
+		}
 	}
 
-	if err != nil {
-		panic(fmt.Errorf("failed to create session: %w", err))
-	}
+	log.Println("Successfully created DynamoDB session")
 
-	log.Println("Successfully created session")
+	sess := session.Must(session.NewSession())
 
 	return &DB{
-		client: dynamodb.New(sess),
+		client: dynamodb.New(sess, config),
 	}
 }
 
 // GetItem fetches an item from DynamoDB
-func (db *DB) GetItem(ctx context.Context, tableName, id string) (map[string]*dynamodb.AttributeValue, error) {
+func (db *DB) GetItem(ctx context.Context, tableName string, key map[string]*dynamodb.AttributeValue) (map[string]*dynamodb.AttributeValue, error) {
 	input := &dynamodb.GetItemInput{
 		TableName: aws.String(tableName),
-		Key: map[string]*dynamodb.AttributeValue{
-			"id": {
-				S: aws.String(id),
-			},
-		},
+		Key:       key,
 	}
 
 	result, err := db.client.GetItemWithContext(ctx, input)
@@ -91,14 +98,10 @@ func (db *DB) PutItem(ctx context.Context, tableName string, item map[string]*dy
 }
 
 // DeleteItem deletes an item from DynamoDB
-func (db *DB) DeleteItem(ctx context.Context, tableName, id string) error {
+func (db *DB) DeleteItem(ctx context.Context, tableName string, key map[string]*dynamodb.AttributeValue) error {
 	input := &dynamodb.DeleteItemInput{
 		TableName: aws.String(tableName),
-		Key: map[string]*dynamodb.AttributeValue{
-			"id": {
-				S: aws.String(id),
-			},
-		},
+		Key:       key,
 	}
 
 	_, err := db.client.DeleteItemWithContext(ctx, input)
@@ -110,15 +113,12 @@ func (db *DB) DeleteItem(ctx context.Context, tableName, id string) error {
 }
 
 // UpdateItem updates an item in DynamoDB
-func (db *DB) UpdateItem(ctx context.Context, tableName string, id string, updateExpression string, expressionAttributeValues map[string]*dynamodb.AttributeValue) error {
+func (db *DB) UpdateItem(ctx context.Context, tableName string, key map[string]*dynamodb.AttributeValue, updateExpression *string, updateExpressionNames map[string]*string, expressionAttributeValues map[string]*dynamodb.AttributeValue) error {
 	input := &dynamodb.UpdateItemInput{
-		TableName: aws.String(tableName),
-		Key: map[string]*dynamodb.AttributeValue{
-			"id": {
-				S: aws.String(id),
-			},
-		},
-		UpdateExpression:          aws.String(updateExpression),
+		TableName:                 aws.String(tableName),
+		Key:                       key,
+		UpdateExpression:          updateExpression,
+		ExpressionAttributeNames:  updateExpressionNames,
 		ExpressionAttributeValues: expressionAttributeValues,
 	}
 
@@ -131,11 +131,12 @@ func (db *DB) UpdateItem(ctx context.Context, tableName string, id string, updat
 }
 
 // QueryItems queries items from DynamoDB
-func (db *DB) QueryItems(ctx context.Context, tableName string, keyConditionExpression string, expressionAttributeValues map[string]*dynamodb.AttributeValue) ([]map[string]*dynamodb.AttributeValue, error) {
+func (db *DB) QueryItems(ctx context.Context, tableName string, keyConditionExpression *string, expressionAttributeNames map[string]*string, expressionAttributeValues map[string]*dynamodb.AttributeValue) ([]map[string]*dynamodb.AttributeValue, error) {
 	input := &dynamodb.QueryInput{
 		TableName:                 aws.String(tableName),
-		KeyConditionExpression:    aws.String(keyConditionExpression),
-		ExpressionAttributeValues: expressionAttributeValues,
+		KeyConditionExpression:    keyConditionExpression,    // e.g. "id = :id"
+		ExpressionAttributeNames:  expressionAttributeNames,  // e.g. {"#id": "id"}
+		ExpressionAttributeValues: expressionAttributeValues, // e.g. {":id": {"S": "123"}}
 	}
 
 	result, err := db.client.QueryWithContext(ctx, input)
@@ -181,6 +182,7 @@ func (db *DB) BatchGetItems(ctx context.Context, tableName string, keys []map[st
 // BatchWriteItems writes multiple items to DynamoDB
 func (db *DB) BatchWriteItems(ctx context.Context, tableName string, items []map[string]*dynamodb.AttributeValue) error {
 	var writeRequests []*dynamodb.WriteRequest
+
 	for _, item := range items {
 		writeRequests = append(writeRequests, &dynamodb.WriteRequest{
 			PutRequest: &dynamodb.PutRequest{

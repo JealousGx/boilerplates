@@ -1,0 +1,28 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: AWS::Serverless-2016-10-31
+Description: go-serverless-lambda-apigw-offline-skeleton
+Resources:
+  Hello:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: out/lambdas/hello
+      Runtime: go1.x
+      Timeout: 30 # due to local development
+      Events:
+        SampleEvent:
+          Type: Api
+          Properties:
+            Path: /api/v1/test/{proxy+}
+            Method: any
+  User:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: out/lambdas/users
+      Runtime: go1.x
+      Timeout: 30
+      Events:
+        SampleEvent:
+          Type: Api
+          Properties:
+            Path: /api/v1/users/{proxy+}
+            Method: any

@@ -10,7 +10,7 @@ import (
 )
 
 func handler(ctx context.Context, req events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
-	return router.Router(ctx, req, api.HelloRoutes), nil
+	return router.Router(ctx, req, api.UserRoutes), nil
 }
 
 func main() {

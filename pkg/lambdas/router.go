@@ -17,9 +17,13 @@ type AdditionalInfo struct {
 	Body        map[string]interface{}
 }
 
+type RouteMethodConfig struct {
+	Callback     func(pathParams map[string]string, addInfo AdditionalInfo) events.APIGatewayProxyResponse
+	Authenticate bool // You can add more fields as needed
+}
+
 type RouteConfig struct {
-	Callback   func(pathParams map[string]string, addInfo AdditionalInfo) events.APIGatewayProxyResponse
-	HTTPMethod string
+	Methods map[string]RouteMethodConfig
 }
 
 func Router(ctx context.Context, req events.APIGatewayProxyRequest, routes map[string]RouteConfig) events.APIGatewayProxyResponse {
@@ -44,12 +48,6 @@ func Router(ctx context.Context, req events.APIGatewayProxyRequest, routes map[s
 
 	for path, route := range routes {
 		path = strings.TrimSuffix(path, "/") // remove trailing slash
-
-		if route.HTTPMethod == "" {
-			route.HTTPMethod = http.MethodGet
-		}
-
-		routes[path] = route
 
 		regexPattern := "^" + regexp.MustCompile(`{([^}]*)}`).ReplaceAllString(path, `(?P<$1>[^/]*)`) + "$"
 		regex := regexp.MustCompile(regexPattern)
@@ -76,9 +74,10 @@ func Router(ctx context.Context, req events.APIGatewayProxyRequest, routes map[s
 		return utils.PrepareResponse(http.StatusNotFound, nil, utils.Responses[404])
 	}
 
-	if requestedRoute.HTTPMethod != httpMethod {
+	methodConfig, methodExists := requestedRoute.Methods[httpMethod]
+	if !methodExists {
 		return utils.PrepareResponse(http.StatusMethodNotAllowed, nil, utils.Responses[405])
 	}
 
-	return requestedRoute.Callback(pathParams, addInfo)
+	return methodConfig.Callback(pathParams, addInfo)
 }

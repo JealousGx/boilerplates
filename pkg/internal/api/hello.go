@@ -8,19 +8,34 @@ import (
 	"github.com/aws/aws-lambda-go/events"
 )
 
-var Routes = map[string]router.RouteConfig{
+var HelloRoutes = map[string]router.RouteConfig{
 	"/hello/": { // equivalent to /hello
-		Callback: hello_world,
+		Methods: map[string]router.RouteMethodConfig{
+			http.MethodGet: {
+				Callback: hello_world,
+			},
+		},
 	},
 	"/hello/{goodId}": {
-		Callback: hello,
+		Methods: map[string]router.RouteMethodConfig{
+			http.MethodGet: {
+				Callback: hello,
+			},
+		},
 	},
 	"/world": {
-		Callback: world,
+		Methods: map[string]router.RouteMethodConfig{
+			http.MethodGet: {
+				Callback: world,
+			},
+		},
 	},
 	"/world/tasty": {
-		Callback:   world,
-		HTTPMethod: http.MethodPost,
+		Methods: map[string]router.RouteMethodConfig{
+			http.MethodPost: {
+				Callback: world,
+			},
+		},
 	},
 }
 

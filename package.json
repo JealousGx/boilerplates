@@ -4,15 +4,17 @@
   "bin": {
     "serverless-aws-cdk": "bin/serverless-aws-cdk.js"
   },
+  "engines": {
+    "node": ">=20.10.0"
+  },
   "scripts": {
-    "start": "cross-env ENVIRONMENT=local-db serverless offline start --noPrependStageInUrl --httpPort 4000 --stage dev",
-    "start:dev": "cross-env ENVIRONMENT=local serverless offline start --noPrependStageInUrl --httpPort 4000 --stage dev",
+    "start-sam": "export DOCKER_HOST=unix://$HOME/.docker/run/docker.sock && make build && sam local start-api -p 4000",
+    "create-lambda-network": "docker network create lambda-local",
     "create-dynamodb-image": "docker run -p 8000:8000 --name dynodb-local amazon/dynamodb-local -jar DynamoDBLocal.jar -sharedDb",
     "create-table:local": "aws dynamodb create-table --cli-input-json file://pkg/environments/local/devtable.json --endpoint-url http://127.0.0.1:8000",
-    "write-table:local": "cross-env ENVIRONMENT=local-db REGION=localhost FILE_NAME=ServerlessAWSCDKDev TABLE_NAME=ServerlessAWSCDKLocal ENDPOINT_URL=http://127.0.0.1:8000 go run pkg/dynamoDbAwsToLocal/writeItems/main.go",
-    "scan-table:local": "cross-env ENVIRONMENT=local-db REGION=localhost TABLE_NAME=ServerlessAWSCDKLocal ENDPOINT_URL=http://127.0.0.1:8000 go run pkg/dynamoDbAwsToLocal/scanItems/main.go",
-    "scan-table:dev": "REGION=us-east-1 TABLE_NAME=ServerlessAWSCDKDev go run pkg/dynamoDbAwsToLocal/scanItems/main.go",
-    "build": "tsc",
+    "build": "make build",
+    "zip": "make zip",
+    "deploy": "npm run build && npm run zip && cdk deploy",
     "watch": "tsc -w",
     "test": "jest",
     "cdk": "cdk"
@@ -23,7 +25,6 @@
     "aws-cdk": "2.159.1",
     "cross-env": "^7.0.3",
     "jest": "^29.7.0",
-    "serverless-offline": "^14.3.2",
     "ts-jest": "^29.2.5",
     "ts-node": "^10.9.2",
     "typescript": "~5.6.2"
@@ -32,5 +33,10 @@
     "aws-cdk-lib": "2.159.1",
     "constructs": "^10.0.0",
     "source-map-support": "^0.5.21"
+  },
+  "author": {
+    "name": "JealousGx | Matt",
+    "email": "jealousjsp@gmail.com",
+    "url": "https://jealous.dev"
   }
 }

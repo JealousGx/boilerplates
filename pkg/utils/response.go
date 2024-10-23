@@ -7,6 +7,9 @@ import (
 )
 
 var Responses = map[int]map[string]interface{}{
+	201: {
+		"message": "Created",
+	},
 	204: {
 		"message": "No Content",
 	},
