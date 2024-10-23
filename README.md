@@ -31,8 +31,8 @@ npm install -g aws-cdk
 ### Clone the Repository
 
 ```bash
-git clone https://github.com/JealousGx/boilerplates/tree/go-serverless-cdk
-cd serverless-aws-cdk
+git clone -b go-serverless-cdk --single-branch https://github.com/JealousGx/boilerplates
+cd boilerplates
 ```
 
 ### Install Dependencies
